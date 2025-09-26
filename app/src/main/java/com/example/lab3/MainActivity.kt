@@ -42,7 +42,6 @@ class MainActivity : ComponentActivity() {
     private val requestActivityRecognitionPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
-                // Permission granted, safe to register step sensor
                 Log.d("Permission", "ACTIVITY_RECOGNITION granted")
             } else {
                 Log.w("Permission", "ACTIVITY_RECOGNITION denied")
@@ -61,11 +60,36 @@ class MainActivity : ComponentActivity() {
         setContent {
             Lab3Theme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Column(verticalArrangement = Arrangement.SpaceAround){
+                    Column(verticalArrangement = Arrangement.SpaceAround) {
                         Text(text = "Sensor Readings", fontWeight = FontWeight.SemiBold)
-                        Lighting()
-                        Acceleration()
-                        Steps()
+
+                        // Light sensor
+                        val lightValue = remember { mutableFloatStateOf(0f) }
+                        RememberSensorValue(Sensor.TYPE_LIGHT) { event ->
+                            lightValue.floatValue = event.values[0]
+                        }
+                        Lighting(lightValue.floatValue)
+
+                        // Accelerometer
+                        val accelerationValues = remember { mutableStateListOf(0f, 0f, 0f) }
+                        RememberSensorValue(Sensor.TYPE_ACCELEROMETER) { event ->
+                            accelerationValues[0] = event.values[0]
+                            accelerationValues[1] = event.values[1]
+                            accelerationValues[2] = event.values[2]
+                        }
+                        Acceleration(accelerationValues)
+
+                        // Step counter
+                        val steps = remember { mutableIntStateOf(0) }
+                        val initialSteps = remember { mutableIntStateOf(-1) }
+                        RememberSensorValue(Sensor.TYPE_STEP_COUNTER) { event ->
+                            val totalSteps = event.values[0].toInt()
+                            if (initialSteps.intValue == -1) {
+                                initialSteps.intValue = totalSteps
+                            }
+                            steps.intValue = totalSteps - initialSteps.intValue
+                        }
+                        Steps(steps.intValue)
                     }
                 }
             }
@@ -74,13 +98,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Lighting() {
-    val lightValue = remember { mutableFloatStateOf(0f) }
-
-    RememberSensorValue(Sensor.TYPE_LIGHT) { event ->
-        lightValue.floatValue = event.values[0]
-    }
-
+fun Lighting(lightValue: Float) {
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -90,20 +108,12 @@ fun Lighting() {
             contentDescription = "Sun Icon",
             modifier = Modifier.size(30.dp)
         )
-        Text(text = "The light level is ${"%.2f".format(lightValue.floatValue)} lux")
+        Text(text = "The light level is ${"%.2f".format(lightValue)} lux")
     }
 }
 
 @Composable
-fun Acceleration() {
-    val accelerationValues = remember { mutableStateListOf(0f, 0f, 0f) }
-
-    RememberSensorValue(Sensor.TYPE_ACCELEROMETER) { event ->
-        accelerationValues[0] = event.values[0]
-        accelerationValues[1] = event.values[1]
-        accelerationValues[2] = event.values[2]
-    }
-
+fun Acceleration(accelerationValues: List<Float>) {
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -122,18 +132,7 @@ fun Acceleration() {
 }
 
 @Composable
-fun Steps() {
-    val steps = remember { mutableIntStateOf(0) }
-    val initialSteps = remember { mutableIntStateOf(-1) }
-
-    RememberSensorValue(Sensor.TYPE_STEP_COUNTER) { event ->
-        val totalSteps = event.values[0].toInt()
-        if (initialSteps.intValue == -1) {
-            initialSteps.intValue = totalSteps
-        }
-        steps.intValue = totalSteps - initialSteps.intValue
-    }
-
+fun Steps(steps: Int) {
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -143,7 +142,7 @@ fun Steps() {
             contentDescription = "Walking Icon",
             modifier = Modifier.size(30.dp)
         )
-        Text(text = "Steps since app launch: ${steps.intValue}")
+        Text(text = "Steps since app launch: $steps")
     }
 }
 
